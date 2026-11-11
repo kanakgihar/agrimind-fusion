@@ -1,0 +1,11 @@
+{
+  "img_size": 224,
+  "channels": 3,
+  "seed": 42,
+  "split": {
+    "train": 0.7,
+    "val": 0.15,
+    "test": 0.15
+  },
+  "note": "Pixels are fed as float 0-255; model-internal layers do scaling."
+}

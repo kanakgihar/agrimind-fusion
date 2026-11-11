@@ -1,0 +1,2 @@
+model,accuracy,precision_macro,recall_macro,f1_macro,f1_weighted,params,n_test,cpu_ms_per_image_batched
+MobileNetV2 (transfer learning),0.9046541693600517,0.9121400156455011,0.890728612973912,0.8937684820766416,0.9006293252091211,2277199,3094,19.7

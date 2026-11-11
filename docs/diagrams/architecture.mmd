@@ -1,0 +1,11 @@
+flowchart LR
+  U[Leaf photo + optional weather] --> FE[React dashboard]
+  FE -->|REST JSON| API[FastAPI]
+  API --> PRED[MobileNetV2 prediction]
+  API --> CAM[Grad-CAM]
+  API --> WX[Open-Meteo weather]
+  API --> RISK[Rule-based risk engine]
+  API --> REC[Recommendation engine]
+  API --> SAT[Sentinel-2 optional]
+  API --> REP[PDF report]
+  API --> DB[(SQLite or PostgreSQL)]

@@ -1,0 +1,21 @@
+# Local production-like run: PostgreSQL + backend.  Usage: docker compose up --build
+# Needs models/class_names.json and models/mobilenetv2_final.keras to exist first.
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: agrimind
+      POSTGRES_PASSWORD: change-me-locally
+      POSTGRES_DB: agrimind
+    volumes: [pgdata:/var/lib/postgresql/data]
+  backend:
+    build: .
+    depends_on: [db]
+    environment:
+      DATABASE_URL: postgresql://agrimind:change-me-locally@db:5432/agrimind
+      CORS_ORIGINS: http://localhost:5173
+    ports: ["8000:8000"]
+    volumes: [uploads:/srv/storage]
+volumes:
+  pgdata:
+  uploads:

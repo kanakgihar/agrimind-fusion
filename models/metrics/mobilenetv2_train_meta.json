@@ -1,0 +1,18 @@
+{
+  "model": "mobilenetv2",
+  "args": {
+    "model": "mobilenet",
+    "epochs": 8,
+    "fine_tune_epochs": 3,
+    "batch_size": 32,
+    "limit_per_class": 0,
+    "raw_dir": "data/raw",
+    "splits": "data/processed/splits.csv",
+    "models_dir": "models"
+  },
+  "train_seconds": 5393.3,
+  "tensorflow": "2.21.0",
+  "params": 2277199,
+  "n_train": 14436,
+  "n_val": 3094
+}
