@@ -12,3 +12,4 @@ opencv-python-headless>=4.9
 tensorflow>=2.16
 reportlab>=4.0
 # Optional (satellite module): earthengine-api>=0.1.390
+huggingface_hub>=0.30.0

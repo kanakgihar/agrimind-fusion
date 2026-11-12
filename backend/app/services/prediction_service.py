@@ -1,4 +1,6 @@
+
 """Loads the trained Keras model once and runs inference. TensorFlow is imported lazily."""
+import os
 import json
 import logging
 import threading
@@ -40,28 +42,77 @@ class PredictionService:
     def model_version(self) -> str:
         return self.model_path.stem
 
+    def _ensure_model_file(self):
+        if self.model_path.exists():
+            return
+
+        repo_id = os.getenv("HF_MODEL_REPO", "").strip()
+        if not repo_id:
+            raise ModelNotReady(
+                f"Model not found at {self.model_path}. "
+                "Set HF_MODEL_REPO to download it from Hugging Face."
+            )
+
+        try:
+            from huggingface_hub import hf_hub_download
+
+            self.model_path.parent.mkdir(parents=True, exist_ok=True)
+            downloaded_path = hf_hub_download(
+                repo_id=repo_id,
+                filename=settings.model_file,
+                repo_type="model",
+                local_dir=str(settings.models_dir),
+            )
+            log.info("Downloaded model from Hugging Face: %s", downloaded_path)
+
+        except Exception as exc:
+            raise ModelNotReady(
+                f"Could not download model from Hugging Face: {exc}"
+            ) from exc
+
     def status(self) -> dict:
-        return {"model_file": settings.model_file, "model_file_exists": self.model_path.exists(),
-                "class_names_exist": (settings.models_dir / "class_names.json").exists(),
-                "model_loaded": self._model is not None}
+        return {
+            "model_file": settings.model_file,
+            "model_file_exists": self.model_path.exists(),
+            "class_names_exist": (
+                settings.models_dir / "class_names.json"
+            ).exists(),
+            "model_loaded": self._model is not None,
+        }
 
     def load(self):
         with self._lock:
             if self._model is not None:
                 return
+
             cls_file = settings.models_dir / "class_names.json"
-            if not self.model_path.exists() or not cls_file.exists():
+
+            if not cls_file.exists():
                 raise ModelNotReady(
-                    f"Model not found. Expected {self.model_path} and {cls_file}. "
-                    "Train it first: python scripts/prepare_data.py, then python scripts/train.py --model mobilenet")
-            from tensorflow import keras  # lazy import
+                    f"Class names file not found: {cls_file}"
+                )
+
+            self._ensure_model_file()
+
+            from tensorflow import keras
+
             self._classes = json.loads(cls_file.read_text())
             self._model = keras.models.load_model(self.model_path)
+
             out = self._model.output_shape[-1]
+
             if out != len(self._classes):
                 self._model = None
-                raise ModelNotReady(f"class_names.json has {len(self._classes)} classes but the model outputs {out}.")
-            log.info("Model loaded: %s (%d classes)", self.model_path.name, len(self._classes))
+                raise ModelNotReady(
+                    f"class_names.json has {len(self._classes)} classes "
+                    f"but the model outputs {out}."
+                )
+
+            log.info(
+                "Model loaded: %s (%d classes)",
+                self.model_path.name,
+                len(self._classes),
+            )
 
     @property
     def model(self):
@@ -75,9 +126,10 @@ class PredictionService:
 
     def preprocess(self, image_path) -> np.ndarray:
         import tensorflow as tf
+
         img = Image.open(image_path).convert("RGB")
         arr = np.asarray(img, dtype=np.float32)
-        x = tf.image.resize(arr, (IMG, IMG)).numpy()  # same resize op as training; values stay 0-255
+        x = tf.image.resize(arr, (IMG, IMG)).numpy()
         return x[None, ...]
 
     def predict(self, image_path) -> dict:
@@ -85,12 +137,29 @@ class PredictionService:
         x = self.preprocess(image_path)
         probs = model(x, training=False).numpy()[0]
         order = np.argsort(probs)[::-1][:3]
-        top3 = [{"class": self._classes[i], "display_name": display_name(self._classes[i]),
-                 "confidence": float(probs[i])} for i in order]
+
+        top3 = [
+            {
+                "class": self._classes[i],
+                "display_name": display_name(self._classes[i]),
+                "confidence": float(probs[i]),
+            }
+            for i in order
+        ]
+
         best = top3[0]["class"]
-        return {"predicted_class": best, "display_name": display_name(best), "crop": crop_of(best),
-                "is_healthy": is_healthy(best), "confidence": top3[0]["confidence"], "top3": top3,
-                "class_index": int(order[0]), "model_version": self.model_version, "note": NOTE}
+
+        return {
+            "predicted_class": best,
+            "display_name": display_name(best),
+            "crop": crop_of(best),
+            "is_healthy": is_healthy(best),
+            "confidence": top3[0]["confidence"],
+            "top3": top3,
+            "class_index": int(order[0]),
+            "model_version": self.model_version,
+            "note": NOTE,
+        }
 
 
 prediction_service = PredictionService()
