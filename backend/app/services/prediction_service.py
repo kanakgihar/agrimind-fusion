@@ -1,5 +1,5 @@
 
-"""Loads the trained Keras model once and runs inference. TensorFlow is imported lazily."""
+"""Loads the trained Keras model once and runs inference."""
 import os
 import json
 import logging
