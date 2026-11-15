@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { UploadCloud, Search } from "lucide-react";
 import { api } from "../api";
 import ScanResult from "../components/ScanResult";
@@ -13,6 +13,13 @@ export default function CropDoctor() {
   const inputRef = useRef(null);
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
+  useEffect(() => {
+  return () => {
+    if (preview?.startsWith("blob:")) {
+      URL.revokeObjectURL(preview);
+    }
+  };
+}, [preview]);
   const [over, setOver] = useState(false);
   const [crop, setCrop] = useState("");
   const [env, setEnv] = useState(EMPTY_ENV);
@@ -22,13 +29,26 @@ export default function CropDoctor() {
   const [result, setResult] = useState(null);
 
   function pick(f) {
-    if (!f) return;
-    if (!["image/jpeg", "image/png"].includes(f.type)) { toast("Choose a JPEG or PNG image.", "error"); return; }
-    if (f.size > 8 * 1024 * 1024) { toast("Image is larger than 8 MB.", "error"); return; }
-    setFile(f); setResult(null); setError("");
-    setPreview(URL.createObjectURL(f));
+  if (!f) return;
+
+  if (!["image/jpeg", "image/png"].includes(f.type)) {
+    toast("Choose a JPEG or PNG image.", "error");
+    return;
   }
 
+  if (f.size > 8 * 1024 * 1024) {
+    toast("Image is larger than 8 MB.", "error");
+    return;
+  }
+
+  const imageBlob = new Blob([f], { type: f.type });
+  const previewUrl = URL.createObjectURL(imageBlob);
+
+  setFile(f);
+  setResult(null);
+  setError("");
+  setPreview(previewUrl);
+}
   async function searchPlace() {
     if (place.q.trim().length < 2) return;
     setPlace((p) => ({ ...p, busy: true, results: [] }));
